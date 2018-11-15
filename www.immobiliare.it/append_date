@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for f in *html; do
+	curl -s https://www.immobiliare.it/$f | grep -A1 "Riferimento e Data annuncio" | sed -n 's|.* \([0-9]\{1,2\}/[0-9]\{1,2\}\)/2018.*|\1|p' >> $f
+done
