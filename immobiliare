@@ -1,0 +1,52 @@
+#!/bin/lua
+
+do
+	local settings = io.open("settings")
+	baseurl = settings:read('l')
+	pattern = settings:read('l')
+	maxpages = tonumber(settings:read('l'))
+	exclusions = {}
+	for exclude in settings:lines() do exclusions[exclude] = true end
+	settings:close()
+end
+
+function urlcmd(cmd, url)
+	cmd = "read url; " .. cmd
+	local pipe = io.popen(cmd, 'w')
+	if not pipe or not pipe:write(url) then return end
+	local _, _, code = pipe:close()
+	return code
+end
+
+function seen(url) return urlcmd('[[ -f "$url" ]] || [[ -f "ignored/$url" ]]', url) == 0 end
+function touch(url) urlcmd('touch "$url"; git add "$url"', url) end
+open = os.getenv("NOBROWSER") and function() end or
+	function (url) urlcmd('xdg-open https://"$url" &>/dev/null', url) end
+
+function fetch(page, new)
+	local pipe = io.popen(("curl -s '%s'"):format(baseurl):format(page))
+	if not pipe then return end
+	for url in pipe:read('a'):gmatch(pattern) do
+		for exclude in pairs(exclusions) do if url:find(exclude) then goto skip end end
+		if seen(url) then goto skip end
+		table.insert(new, url)
+		touch(url)
+		::skip::
+	end
+	pipe:close()
+end
+
+while true do
+	local new = {}
+	for i = 1, maxpages do fetch(i, new) end
+	if #new == 0 then goto pause end
+	print("NEW!!!!")
+	os.execute("paplay Wilhelm_Scream.ogg; git commit -am new >/dev/null")
+	while #new > 0 do
+		local url = table.remove(new, #new)
+		print(url)
+		open(url)
+	end
+	::pause::
+	os.execute("sleep 1m")
+end
