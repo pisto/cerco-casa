@@ -39,6 +39,7 @@ end
 while true do
 	local new = {}
 	for i = 1, maxpages do fetch(i, new) end
+	io.stdout:write('.'):flush()
 	if #new == 0 then goto pause end
 	print("NEW!!!!")
 	os.execute("paplay Wilhelm_Scream.ogg; git commit -am new >/dev/null")
